@@ -19,11 +19,11 @@
 package server
 
 import (
+	"github.com/asig/mqttlite/messages"
+	
 	"net"
 	"sync"
 	"time"
-
-	"mqttlite/messages"
 )
 
 var (

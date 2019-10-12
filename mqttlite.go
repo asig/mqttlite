@@ -19,13 +19,13 @@
 package main
 
 import (
+	"github.com/asig/mqttlite/server"
+
 	"flag"
 	"fmt"
 	"github.com/asig/go-logging/logging"
 	"net"
 	"time"
-
-	"mqttlite/server"
 )
 
 var (
@@ -39,6 +39,7 @@ var (
 
 func init() {
 	flag.Parse()
+	logging.Initialize()
 	logger = logging.Get("main")
 	server.Init()
 }
