@@ -89,15 +89,25 @@ func ReadMessage(conn net.Conn) (*Message, Error) {
 
 func readBytes(conn net.Conn, timeout time.Duration, b []byte) Error {
 	conn.SetReadDeadline(time.Now().Add(timeout))
-	read, err := conn.Read(b)
-	if e, ok := err.(net.Error); ok && e.Timeout() {
-		return ErrTimeout
-	} else if err == io.EOF {
-		return ErrEof
-	} else if err != nil || read != len(b) {
-		return ErrOther
+	pos := 0
+	remaining := len(b)
+	for {
+		buf := make([]byte, remaining)
+		read, err := conn.Read(buf)
+		if e, ok := err.(net.Error); ok && e.Timeout() {
+			return ErrTimeout
+		} else if err == io.EOF {
+			return ErrEof
+		}
+		for i := 0; i < read; i++ {
+			b[pos] = buf[i]
+			pos++
+		}
+		if pos == len(b) {
+			return ErrNone
+		}
+		remaining -= read
 	}
-	return ErrNone
 }
 
 func readByte(conn net.Conn, timeout time.Duration) (byte, Error) {
@@ -121,19 +131,15 @@ func ReadMessageWithTimeout(conn net.Conn, timeout time.Duration) (*Message, Err
 	msg.Type = MessageType(b) >> 4
 	msg.Flags = uint8(b) & 0xf
 
-	var mult uint64 = 1
 	var len uint64 = 0
 	cont := true
 	for cont {
 		if b, err = readByte(conn, timeout); err != ErrNone {
 			return nil, err
 		}
-		cont = b > 127
-		if b > 127 {
-			b = b - 127
-		}
-		len = uint64(b) * mult
-		mult *= 128
+		cont = (b & 128) > 0
+		b = b & 0x7f
+		len = (len << 7) | uint64(b)
 	}
 	msg.Data = make([]byte, len)
 	if err = readBytes(conn, timeout, msg.Data); err != ErrNone {
