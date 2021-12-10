@@ -23,7 +23,7 @@ import (
 	"sync"
 	"time"
 
-	"mqttlite/messages"
+	"github.com/asig/mqttlite/messages"
 )
 
 var (

@@ -25,7 +25,7 @@ import (
 	"net"
 	"time"
 
-	"mqttlite/server"
+	"github.com/asig/mqttlite/server"
 )
 
 var (
