@@ -3,12 +3,12 @@
  *
  * This file is part of mqttlite.
  *
- * kosmos-cp1 is free software: you can redistribute it and/or
+ * mqttlite is free software: you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as
  * published by the Free Software Foundation, either version 3 of the
  * License, or (at your option) any later version.
  *
- * kosmos-cp1 is distributed in the hope that it will be useful,
+ * mqttlite is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -380,6 +380,7 @@ func (s *Session) handlePublish(msg *messages.Message) {
 	}
 	data := msg.Data[pr.GetCurPos():]
 	logger.Infof("  data: %+v", data)
+	logger.Infof("  data (string): %+v", string(data))
 
 	om := s.newOutstandingPublishMessage(topicName, data, retainFlag, qos)
 
