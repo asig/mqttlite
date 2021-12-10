@@ -19,13 +19,13 @@
 package server
 
 import (
-	"github.com/asig/go-logging/logging"
-
 	"fmt"
 	"net"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/asig/go-logging/logging"
 )
 
 type fakeConn struct {

@@ -21,9 +21,10 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/asig/go-logging/logging"
 	"net"
 	"time"
+
+	"github.com/asig/go-logging/logging"
 
 	"github.com/asig/mqttlite/server"
 )
