@@ -39,6 +39,7 @@ var (
 
 func init() {
 	flag.Parse()
+	logging.Initialize()
 	logger = logging.Get("main")
 	server.Init()
 }
