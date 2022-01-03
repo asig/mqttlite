@@ -52,10 +52,11 @@ type Message struct {
 type Error uint8
 
 const (
-	ErrNone    Error = 0
-	ErrEof     Error = 1
-	ErrTimeout Error = 2
-	ErrOther   Error = 3
+	ErrNone Error = iota
+	ErrEof
+	ErrTimeout
+	ErrMalformedRemainingLength
+	ErrOther
 )
 
 func encodeLength(l int) []byte {
@@ -129,19 +130,26 @@ func ReadMessageWithTimeout(conn net.Conn, timeout time.Duration) (*Message, Err
 		return nil, err
 	}
 	msg.Type = MessageType(b) >> 4
-	msg.Flags = uint8(b) & 0xf
+	msg.Flags = b & 0xf
 
-	var len uint64 = 0
-	cont := true
-	for cont {
+	var l uint64 = 0
+	shift := 0
+	for {
 		if b, err = readByte(conn, timeout); err != ErrNone {
 			return nil, err
 		}
-		cont = (b & 128) > 0
+		cont := (b & 128) > 0
 		b = b & 0x7f
-		len = (len << 7) | uint64(b)
+		l = (uint64(b) << shift) | l
+		if !cont {
+			break
+		}
+		shift += 7
+		if shift > 21 {
+			return nil, ErrMalformedRemainingLength
+		}
 	}
-	msg.Data = make([]byte, len)
+	msg.Data = make([]byte, l)
 	if err = readBytes(conn, timeout, msg.Data); err != ErrNone {
 		return nil, err
 	}
