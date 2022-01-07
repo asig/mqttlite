@@ -547,27 +547,49 @@ func (s *Session) handleUnsubscribe(msg *messages.Message) {
 }
 
 func (s *Session) handleConnect(msg *messages.Message) {
-	// Check protocol name
-	if !(msg.Data[0] == 0 && msg.Data[1] == 4 && msg.Data[2] == 'M' && msg.Data[3] == 'Q' && msg.Data[4] == 'T' && msg.Data[5] == 'T') {
-		logger.Infof("Bad protocol %v, disconnecting", msg.Data[2:6])
+	var payloadOfs uint16
+	var flags byte
+
+	// Check protocol
+	if (msg.Data[0] == 0 && msg.Data[1] == 6 && msg.Data[2] == 'M' && msg.Data[3] == 'Q' && msg.Data[4] == 'I' && msg.Data[5] == 's' && msg.Data[6] == 'd' && msg.Data[7] == 'p') {
+		// MQTT 3.1
+		protocolVersion := msg.Data[8]
+		flags = msg.Data[9]
+		payloadOfs = 12
+
+		if protocolVersion != 3 {
+			logger.Infof("Bad protocol version %d, disconnecting", protocolVersion)
+			s.sendConnAck(0x01 /*unacceptable protocol version*/, false)
+			s.Close()
+			return
+		}
+
+
+	} else if (msg.Data[0] == 0 && msg.Data[1] == 4 && msg.Data[2] == 'M' && msg.Data[3] == 'Q' && msg.Data[4] == 'T' && msg.Data[5] == 'T') {
+		// MQTT 3.1.1
+		protocolVersion := msg.Data[6]
+		flags = msg.Data[7]
+		payloadOfs = 10
+
+		if protocolVersion != 4 {
+			logger.Infof("Bad protocol version %d, disconnecting", protocolVersion)
+			s.sendConnAck(0x01 /*unacceptable protocol version*/, false)
+			s.Close()
+			return
+		}
+
+		if (flags & 1) != 0 {
+			logger.Infof("Reserved flag is not 0, disconnecting")
+			s.Close()
+			return
+		}
+
+	} else {
+		logger.Info("Unknown protocol, disconnecting")
 		s.Close()
 		return
 	}
 
-	protocolVersion := msg.Data[6]
-	if protocolVersion != 4 {
-		logger.Infof("Bad protocol version %d, disconnecting", protocolVersion)
-		s.sendConnAck(0x01 /*unacceptable protocol version*/, false)
-		s.Close()
-		return
-	}
-
-	flags := msg.Data[7]
-	if (flags & 1) != 0 {
-		logger.Infof("Reserved flag is not 0, disconnecting")
-		s.Close()
-		return
-	}
 	userNameFlag := (flags & 128) > 0
 	passwordFlag := (flags & 64) > 0
 	willRetain := (flags & 32) > 0
@@ -585,7 +607,7 @@ func (s *Session) handleConnect(msg *messages.Message) {
 	s.keepAliveDuration = time.Duration(int64(uint16(msg.Data[8])<<8|uint16(msg.Data[9]))) * time.Second
 	logger.Infof("KeepAliceSecs = %d", s.keepAliveDuration)
 
-	pr := msg.PayloadReader(10)
+	pr := msg.PayloadReader(payloadOfs)
 	clientId := pr.GetString()
 	logger.Infof("ClientID: %s", clientId)
 
