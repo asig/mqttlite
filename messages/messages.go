@@ -84,10 +84,6 @@ func (msg *Message) Send(conn net.Conn) {
 	conn.Write(buf)
 }
 
-func ReadMessage(conn net.Conn) (*Message, Error) {
-	return ReadMessageWithTimeout(conn, 0)
-}
-
 func readBytes(conn net.Conn, timeout time.Duration, b []byte) Error {
 	conn.SetReadDeadline(time.Now().Add(timeout))
 	pos := 0

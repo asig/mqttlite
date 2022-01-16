@@ -30,67 +30,6 @@ var (
 	nextSessionId uint32
 )
 
-type SessionList struct {
-	lock     sync.Mutex
-	sessions []*Session
-}
-
-func (l *SessionList) NewSession(conn net.Conn) *Session {
-	id := nextSessionId
-	nextSessionId++
-	s := &Session{
-		id:                      id,
-		conn:                    conn,
-		createdAt:               time.Now(),
-		connected:               false,
-		nextPacketId:            1,
-		subscriptions:           make(map[TopicFilter]*Subscription),
-		unacknowledgedPublishes: make(map[uint16]*outstandingPublishMessage),
-		unacknowledgedPubRels:   make(map[uint16]*outstandingPubRelMessage),
-		unacknowledgedPubRecs:   make(map[uint16]*outstandingPubRecMessage),
-		sessions:                l,
-	}
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	l.sessions = append(l.sessions, s)
-	return s
-}
-
-func (l *SessionList) RemoveDead() {
-	toRemove := make(map[*Session]bool)
-	for _, sess := range l.sessions {
-		if sess.deadlineExceeded() {
-			logger.Infof("Session %d: No message within %s, closing.", sess.id, sess.keepAliveDuration)
-			sess.Close()
-			toRemove[sess] = true
-		}
-	}
-	l.lock.Lock()
-	var newSessions []*Session
-	for _, sess := range l.sessions {
-		if _, ok := toRemove[sess]; ok {
-			continue
-		}
-		newSessions = append(newSessions, sess)
-	}
-	l.sessions = newSessions
-	l.lock.Unlock()
-}
-
-func (l *SessionList) Remove(c *Session) {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-	for i := 0; i < len(l.sessions); i++ {
-		if l.sessions[i] == c {
-			// See https://github.com/golang/go/wiki/SliceTricks
-			l.sessions[i] = l.sessions[len(l.sessions)-1]
-			l.sessions[len(l.sessions)-1] = nil
-			l.sessions = l.sessions[:len(l.sessions)-1]
-			return
-		}
-	}
-}
-
 type Subscription struct {
 	qos    uint8
 	filter TopicFilter
@@ -187,7 +126,7 @@ type Session struct {
 	unacknowledgedPubRels   map[uint16]*outstandingPubRelMessage
 	unacknowledgedPubRecs   map[uint16]*outstandingPubRecMessage
 
-	sessions *SessionList
+	server *Server
 }
 
 func (s *Session) deadlineExceeded() bool {
@@ -341,7 +280,7 @@ func (s *Session) sendPingResp() {
 
 func (s *Session) sendToSubscribers(om *outstandingPublishMessage) {
 	// Publish to subscribed sessions
-	for _, sess := range s.sessions.sessions {
+	for _, sess := range s.server.sessions {
 		logger.Infof("Session %d: checking Session %d", s.id, sess.id)
 		if sess == s {
 			continue

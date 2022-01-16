@@ -20,9 +20,6 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"net"
-	"time"
 
 	"github.com/asig/go-logging/logging"
 
@@ -32,10 +29,7 @@ import (
 var (
 	logger *logging.Logger
 
-	flagPort    = flag.Int("port", 1883, "Port to listen on")
-	flagAddress = flag.String("address", "", "Address to listen on")
-
-	sessions = server.SessionList{}
+	flagAddress = flag.String("address", ":1883", "Address to listen on, e.g. localhost:1883. If only a port is specified, the server will listen on all addresses.")
 )
 
 func init() {
@@ -46,30 +40,6 @@ func init() {
 }
 
 func main() {
-
-	ticker := time.NewTicker(15 * time.Second)
-	go func() {
-		for range ticker.C {
-			sessions.RemoveDead()
-		}
-	}()
-
-	addr := fmt.Sprintf("%s:%d", *flagAddress, *flagPort)
-	logger.Infof("Listening on %s", addr)
-	listener, err := net.Listen("tcp", addr)
-	if err != nil {
-		logger.Fatalf("Can't listen: %s", err)
-	}
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			logger.Warningf("Can't accept connection: %s", err)
-		}
-		go func() {
-			s := sessions.NewSession(conn)
-			logger.Infof("Starting session %+v", s)
-			s.Run()
-			sessions.Remove(s)
-		}()
-	}
+	srv := server.New(*flagAddress)
+	srv.Start()
 }

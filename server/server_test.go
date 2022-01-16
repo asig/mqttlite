@@ -19,13 +19,11 @@
 package server
 
 import (
-	"fmt"
+	"github.com/asig/go-logging/logging"
 	"net"
 	"reflect"
 	"testing"
 	"time"
-
-	"github.com/asig/go-logging/logging"
 )
 
 type fakeConn struct {
@@ -64,6 +62,7 @@ func (c *fakeConn) SetWriteDeadline(t time.Time) error {
 }
 
 func init() {
+	logging.Initialize()
 	logger = logging.Get("test")
 }
 
@@ -196,8 +195,8 @@ func TestTopicFilterMatches(t *testing.T) {
 }
 
 func TestSessionlistRemoveDead(t *testing.T) {
-	sessions := SessionList{}
-	sessions.sessions = []*Session{
+	srv := New("")
+	srv.sessions = []*Session{
 		&Session{
 			id:                  23,
 			keepAliveDuration:   100 * time.Second,
@@ -211,16 +210,13 @@ func TestSessionlistRemoveDead(t *testing.T) {
 			conn:                &fakeConn{},
 		},
 	}
-	fmt.Printf("*********************1\n")
-	sessions.RemoveDead()
-	fmt.Printf("*********************2\n")
-	got := len(sessions.sessions)
-	fmt.Printf("*********************3\n")
+	srv.RemoveDead()
+	got := len(srv.sessions)
 	if got != 1 {
 		t.Errorf("len(sessions.sessions): Got %d, want %d", got, 1)
 
-		if sessions.sessions[0].id != 23 {
-			t.Errorf("len(sessions.sessions): Got %d, want %d", sessions.sessions[0].id, 23)
+		if srv.sessions[0].id != 23 {
+			t.Errorf("len(srv.sessions): Got %d, want %d", srv.sessions[0].id, 23)
 		}
 	}
 }
