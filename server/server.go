@@ -27,6 +27,7 @@ import (
 type Server struct {
 	hostPort string
 
+	startTime time.Time
 	shouldStop chan bool
 	sessionsLock     sync.Mutex
 	sessions []*Session
@@ -43,8 +44,13 @@ func New(hostPort string) *Server {
 func (s *Server) listenAndServe(listener net.Listener) {
 	for {
 		conn, err := listener.Accept()
-		if err != nil {
+		if err != nil  {
+			if _, ok := err.(*net.OpError); ok {
+				// Shutting down, ignore this error
+				continue
+			}
 			logger.Warningf("Can't accept connection: %s", err)
+			continue
 		}
 		go func() {
 			sess := s.NewSession(conn)
@@ -56,6 +62,7 @@ func (s *Server) listenAndServe(listener net.Listener) {
 }
 
 func (s *Server) Start() error {
+	s.startTime = time.Now()
 	ticker := time.NewTicker(15 * time.Second)
 	go func() {
 		for range ticker.C {
@@ -75,6 +82,7 @@ func (s *Server) Start() error {
 }
 
 func (s* Server) Stop() {
+	logger.Info("Shutdown requested")
 	s.shouldStop <- true
 }
 
