@@ -25,7 +25,7 @@ import (
 	"github.com/asig/go-logging/logging"
 
 	"github.com/asig/mqttlite/management"
-	"github.com/asig/mqttlite/server"
+	"github.com/asig/mqttlite/internal/server"
 )
 
 var (
